@@ -63,7 +63,7 @@ main{padding:20px;max-width:1240px;margin:0 auto}
 }
 .cmp{position:absolute;line-height:1.05;font-size:calc(var(--lp) * var(--t));
   display:flex;align-items:center;overflow:hidden}
-.cmp > .txt{width:100%;word-break:break-word}
+.cmp > .txt{width:100%;word-break:normal;overflow-wrap:normal;hyphens:none}
 .cmp.edit{cursor:move;outline:1px dashed rgba(29,70,134,.32);outline-offset:2px}
 .cmp.edit:hover{outline-color:rgba(29,70,134,.7)}
 .cmp.edit.sel{outline:2px solid var(--navy);outline-offset:2px;z-index:5}
@@ -212,7 +212,7 @@ select:focus,input:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(29,7
             <div class="cores" id="pCores"></div>
 
             <div class="dupla">
-              <div><label>Tamanho</label><input type="number" id="pTam" min="0.5" max="45" step="0.5"></div>
+              <div><label>Tam. máximo</label><input type="number" id="pTam" min="0.5" max="45" step="0.5"></div>
               <div><label>Largura %</label><input type="number" id="pLarg" min="4" max="100" step="1"></div>
             </div>
             <label>Altura %</label>
@@ -375,7 +375,7 @@ var PALETA = [
 function layoutPadrao(){
   return {
     descricao:{ x:7,  y:18, w:86, h:11, tam:6,   fonte:'Quicksand', peso:700, cor:'#1D4686', alinha:'center', caixa:true,  visivel:true },
-    variacao: { x:12, y:31, w:76, h:6,  tam:3.4, fonte:'Quicksand', peso:500, cor:'#12203a', alinha:'center', caixa:false, visivel:true },
+    variacao: { x:12, y:31, w:76, h:6,  tam:5,   fonte:'Quicksand', peso:600, cor:'#12203a', alinha:'center', caixa:true,  visivel:true },
     preco:    { x:4,  y:44, w:92, h:20, tam:22,  fonte:'Poppins',   peso:800, cor:'#E37835', alinha:'center', visivel:true },
     unidade:  { x:25, y:70, w:50, h:5,  tam:3.2, fonte:'Poppins',   peso:600, cor:'#12203a', alinha:'center', caixa:true,  visivel:true }
   };
@@ -563,24 +563,48 @@ function montar(el, placa, editavel){
       : '';
     d.innerHTML = '<div class="txt">' + html + '</div>' + alcas;
     el.appendChild(d);
-    caber(d, L);
+    caber(d, L, c.id === 'descricao' || c.id === 'variacao');
   });
+
+  // a variação nunca pode ficar maior que o nome do produto
+  var elDesc = el.querySelector('.cmp[data-campo=descricao]');
+  var elVar  = el.querySelector('.cmp[data-campo=variacao]');
+  if(elDesc && elVar){
+    var pxDesc = parseFloat(getComputedStyle(elDesc).fontSize);
+    var pxVar  = parseFloat(getComputedStyle(elVar).fontSize);
+    var limite = pxDesc * 0.7;
+    if(pxVar > limite){
+      var lp = parseFloat(getComputedStyle(el).getPropertyValue('--lp')) || el.clientWidth;
+      elVar.style.setProperty('--t', limite / lp);
+    }
+  }
 }
 
-// reduz a fonte ate o texto caber na caixa
-function caber(d, L){
+// ajusta a fonte pra ocupar o maximo possivel dentro da caixa
+// texto curto cresce, texto longo encolhe — sempre sem estourar
+function caber(d, L, podeCrescer){
   var txt = d.querySelector('.txt');
   if(!txt) return;
   var base = L.tam / 100;
-  var fator = 1;
-  var passo = 0;
-  while(passo < 60 &&
-        (txt.scrollHeight > d.clientHeight + 1 || txt.scrollWidth > d.clientWidth + 1)){
-    fator -= 0.03;
-    if(fator < 0.15) break;
-    d.style.setProperty('--t', base * fator);
-    passo++;
+
+  function cabe(mult){
+    d.style.setProperty('--t', base * mult);
+    return txt.scrollHeight <= d.clientHeight + 1 &&
+           txt.scrollWidth  <= d.clientWidth  + 1;
   }
+
+  var teto = podeCrescer ? 6 : 1;
+
+  // ja cabe no tamanho maximo? usa ele e pronto
+  if(cabe(teto)) return;
+
+  // busca binaria pelo maior tamanho que ainda cabe
+  var menor = 0.08, maior = teto;
+  for(var i = 0; i < 16; i++){
+    var meio = (menor + maior) / 2;
+    if(cabe(meio)) menor = meio; else maior = meio;
+  }
+  d.style.setProperty('--t', base * menor);
 }
 
 // as fontes da web chegam depois do primeiro desenho: refaz a conta quando carregarem
