@@ -587,10 +587,16 @@ function caber(d, L, podeCrescer){
   if(!txt) return;
   var base = L.tam / 100;
 
+  // mede o texto de verdade: com alinhamento centralizado a palavra
+  // transborda pros dois lados e scrollWidth só enxerga o lado direito
+  var faixa = document.createRange();
+
   function cabe(mult){
     d.style.setProperty('--t', base * mult);
-    return txt.scrollHeight <= d.clientHeight + 1 &&
-           txt.scrollWidth  <= d.clientWidth  + 1;
+    faixa.selectNodeContents(txt);
+    var r = faixa.getBoundingClientRect();
+    return r.height <= d.clientHeight + 1 &&
+           r.width  <= d.clientWidth  + 1;
   }
 
   var teto = podeCrescer ? 6 : 1;
