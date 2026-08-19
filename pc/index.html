@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Placas Ledur — Computador</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#1D4686; --navy-esc:#122c54; --laranja:#E37835; --laranja-esc:#c25f21;
+  --papel:#F2F4F7; --linha:#dfe3ea; --texto:#12203a; --suave:#6b7590;
+  --erro:#c0392b; --verde:#1f8a5b;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:'Quicksand',system-ui,sans-serif;background:var(--papel);color:var(--texto);-webkit-font-smoothing:antialiased}
+button,input,select{font-family:inherit;font-size:15px}
+button{cursor:pointer;border:0}
+.oculto{display:none !important}
+
+header{background:var(--navy);color:#fff;padding:13px 22px;display:flex;align-items:center;gap:12px}
+header .tit{font-weight:700;font-size:17px}
+header .sub{margin-left:auto;font-size:12.5px;opacity:.7}
+
+nav{display:flex;background:var(--navy-esc)}
+nav button{
+  background:none;color:#a3b1cc;padding:13px 30px;font-size:14.5px;font-weight:600;
+  border-bottom:3px solid transparent;display:flex;align-items:center;gap:8px;
+}
+nav button.ativo{color:#fff;border-bottom-color:var(--laranja)}
+.selo{background:var(--laranja);color:#fff;font-family:'Poppins';font-weight:700;font-size:11px;
+  min-width:20px;height:20px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;padding:0 6px}
+
+main{padding:20px;max-width:1240px;margin:0 auto}
+.painel{display:none}
+.painel.ativo{display:block}
+
+.btn{padding:12px 18px;border-radius:11px;font-weight:700;font-size:14.5px;background:var(--navy);color:#fff}
+.btn:hover{background:var(--navy-esc)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.laranja{background:var(--laranja)}
+.btn.laranja:hover{background:var(--laranja-esc)}
+.btn.fantasma{background:#fff;color:var(--navy);border:1.5px solid var(--linha)}
+.btn.fantasma:hover{background:#eef1f6}
+.btn.perigo{background:#fff;color:var(--erro);border:1.5px solid #f0c8c2}
+.btn.perigo:hover{background:#fdf0ee}
+
+.barra{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.chip{background:#eef2f9;color:var(--navy);border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:700}
+
+/* ---------- oficina ---------- */
+.oficina{display:grid;grid-template-columns:minmax(0,1fr) 268px;gap:20px;align-items:start}
+.palco-area{background:#dfe3ea;border-radius:14px;padding:22px;display:flex;justify-content:center}
+.palco{
+  position:relative;width:100%;max-width:460px;aspect-ratio:210/297;
+  background:#fff;background-size:100% 100%;background-repeat:no-repeat;
+  box-shadow:0 10px 34px rgba(18,32,58,.2);overflow:hidden;user-select:none;
+}
+.cmp{position:absolute;line-height:1.05;font-size:calc(var(--lp) * var(--t));
+  display:flex;align-items:center}
+.cmp > .txt{width:100%;word-break:break-word}
+.cmp.edit{cursor:move;outline:1px dashed rgba(29,70,134,.32);outline-offset:2px}
+.cmp.edit:hover{outline-color:rgba(29,70,134,.7)}
+.cmp.edit.sel{outline:2px solid var(--navy);outline-offset:2px;z-index:5}
+
+.alca{position:absolute;width:11px;height:11px;background:#fff;border:2.5px solid var(--navy);
+  border-radius:3px;display:none;z-index:6;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.cmp.edit.sel .alca{display:block}
+.alca[data-dir=nw]{left:-6px;top:-6px;cursor:nwse-resize}
+.alca[data-dir=ne]{right:-6px;top:-6px;cursor:nesw-resize}
+.alca[data-dir=sw]{left:-6px;bottom:-6px;cursor:nesw-resize}
+.alca[data-dir=se]{right:-6px;bottom:-6px;cursor:nwse-resize}
+.alca[data-dir=n]{left:50%;margin-left:-5px;top:-6px;cursor:ns-resize}
+.alca[data-dir=s]{left:50%;margin-left:-5px;bottom:-6px;cursor:ns-resize}
+.alca[data-dir=w]{left:-6px;top:50%;margin-top:-5px;cursor:ew-resize}
+.alca[data-dir=e]{right:-6px;top:50%;margin-top:-5px;cursor:ew-resize}
+
+
+
+.painel-lado{background:#fff;border:1px solid var(--linha);border-radius:14px;padding:16px;margin-bottom:14px}
+.painel-lado > label:first-child{margin-top:0}
+label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--suave);margin:14px 0 7px}
+select,input[type=number],input[type=text]{
+  width:100%;padding:10px 11px;border:1.5px solid var(--linha);border-radius:10px;
+  background:#fff;color:var(--texto);outline:none;font-size:14px;font-weight:500;
+}
+select:focus,input:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(29,70,134,.12)}
+.dupla{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+
+.campos-bt{display:grid;gap:7px}
+.campos-bt button{
+  padding:11px 12px;border:1.5px solid var(--linha);background:#fff;border-radius:10px;
+  font-size:14px;font-weight:600;color:var(--texto);text-align:left;
+}
+.campos-bt button.sel{border-color:var(--navy);background:#eef2f9;color:var(--navy)}
+
+.cores{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.cores button{aspect-ratio:1;border-radius:9px;border:2px solid var(--linha);padding:0}
+.cores button.sel{border-color:var(--navy);box-shadow:0 0 0 2.5px rgba(29,70,134,.3)}
+.alinha{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.alinha button{padding:9px;border:1.5px solid var(--linha);background:#fff;border-radius:9px;
+  font-size:13px;font-weight:600;color:var(--suave)}
+.alinha button.sel{border-color:var(--navy);background:#eef2f9;color:var(--navy)}
+.marca{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:500;color:var(--texto);
+  margin-top:11px;cursor:pointer;text-transform:none;letter-spacing:0}
+.marca input{width:16px;height:16px;accent-color:var(--navy)}
+.ajuda{font-size:12px;color:var(--suave);line-height:1.5;margin-top:12px}
+
+/* ---------- lista ---------- */
+.topo-lista{
+  background:#fff;border:1px solid var(--linha);border-radius:14px;padding:14px 16px;
+  display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px;
+}
+.filtro{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+.filtro button{
+  padding:10px 16px;border:1.5px solid var(--linha);background:#fff;border-radius:10px;
+  font-size:13.5px;font-weight:700;color:var(--suave);display:flex;align-items:center;gap:7px;
+}
+.filtro button.sel{background:var(--navy);border-color:var(--navy);color:#fff}
+.filtro button em{font-style:normal;font-family:'Poppins';font-size:11px;font-weight:700;
+  background:#eef2f9;color:var(--navy);border-radius:8px;padding:2px 7px}
+.filtro button.sel em{background:rgba(255,255,255,.22);color:#fff}
+.item .loja{font-size:10.5px;font-weight:700;letter-spacing:.03em;color:var(--navy);
+  background:#eef2f9;border-radius:6px;padding:4px 9px;min-width:74px;text-align:center}
+.item .loja.vazia{background:#fff2f0;color:#a2402f}
+
+.item{
+  background:#fff;border:1px solid var(--linha);border-left:4px solid var(--laranja);
+  border-radius:11px;padding:13px 16px;margin-bottom:9px;display:flex;align-items:center;gap:14px;
+}
+.item.marcada{border-color:var(--navy);border-left-color:var(--navy);background:#f7f9fc}
+.item input[type=checkbox]{width:20px;height:20px;accent-color:var(--navy);flex:none;cursor:pointer}
+.item .nome{flex:1;min-width:0;font-weight:600;font-size:15px}
+.item .un{font-size:12px;color:var(--suave);font-weight:700;background:#eef2f9;border-radius:6px;padding:4px 9px}
+.item .preco{font-family:'Poppins';font-weight:700;font-size:20px;color:var(--laranja);min-width:92px;text-align:right}
+.lixo{background:none;color:#bcc3d1;font-size:21px;padding:2px 5px;line-height:1}
+.lixo:hover{color:var(--erro)}
+.vazio{text-align:center;padding:60px 24px;color:var(--suave);background:#fff;border:1px dashed var(--linha);border-radius:14px}
+.vazio strong{display:block;color:var(--texto);font-size:17px;margin-bottom:8px;font-weight:700}
+
+.toast{
+  position:fixed;left:50%;transform:translateX(-50%);bottom:26px;z-index:100;
+  background:var(--texto);color:#fff;padding:13px 22px;border-radius:999px;
+  font-size:14px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.28);
+  opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;
+}
+.toast.ver{opacity:1;transform:translateX(-50%) translateY(-8px)}
+.toast.erro{background:var(--erro)}
+.toast.ok{background:var(--verde)}
+
+#palcoSaida{position:fixed;left:-99999px;top:0;width:1488px;max-width:none;box-shadow:none}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="tit">Placas Ledur</div>
+  <div class="sub">computador</div>
+</header>
+
+<nav>
+  <button data-aba="template" class="ativo">Template</button>
+  <button data-aba="lista">Lista <span class="selo oculto" id="selo">0</span></button>
+</nav>
+
+<main>
+
+  <!-- ===== ABA 1: TEMPLATE ===== -->
+  <section class="painel ativo" id="p-template">
+    <div class="barra">
+      <label class="btn fantasma" style="margin:0;text-transform:none;letter-spacing:0;font-size:14.5px;color:var(--navy)">
+        Carregar template
+        <input type="file" id="arquivo" accept="image/png,image/jpeg,image/webp" class="oculto">
+      </label>
+      <button class="btn fantasma" id="btnTirarArte">Remover template</button>
+      <span class="chip" id="chipArte">sem arte</span>
+      <span id="avisoArte" class="chip" style="background:#fff6ed;color:#8a4b12">carrega o template pra posicionar os campos</span>
+      <span style="margin-left:auto;font-size:12.5px;color:var(--suave)">
+        Clica no campo, arrasta pra mover, puxa um canto pra mudar o tamanho
+      </span>
+    </div>
+
+    <div class="oficina">
+      <div class="palco-area"><div class="palco" id="palco"></div></div>
+
+      <div>
+        <div class="painel-lado">
+          <label style="margin-top:0">Campos</label>
+          <div class="campos-bt" id="camposBt"></div>
+
+          <div id="props" class="oculto">
+            <label>Fonte</label>
+            <select id="pFonte"><option>Quicksand</option><option>Poppins</option></select>
+
+            <label>Peso</label>
+            <select id="pPeso">
+              <option value="400">Normal</option><option value="500">Médio</option>
+              <option value="600">Semi</option><option value="700">Negrito</option>
+              <option value="800">Extra</option><option value="900">Black</option>
+            </select>
+
+            <label>Cor</label>
+            <div class="cores" id="pCores"></div>
+
+            <div class="dupla">
+              <div><label>Tamanho</label><input type="number" id="pTam" min="0.5" max="45" step="0.5"></div>
+              <div><label>Largura %</label><input type="number" id="pLarg" min="4" max="100" step="1"></div>
+            </div>
+            <label>Altura %</label>
+            <input type="number" id="pAltura" min="2" max="100" step="1">
+
+            <label>Alinhamento</label>
+            <div class="alinha" id="pAlinha">
+              <button data-a="left">Esq</button><button data-a="center">Centro</button><button data-a="right">Dir</button>
+            </div>
+
+            <label class="marca" id="wCaixa"><input type="checkbox" id="pCaixa"> Caixa alta</label>
+            <label class="marca"><input type="checkbox" id="pVisivel"> Mostrar na placa</label>
+          </div>
+        </div>
+
+        <div class="painel-lado">
+          <label style="margin-top:0">Texto de teste</label>
+          <input type="text" id="tDesc" value="Amaciante Girando Sol 2L">
+          <input type="text" id="tVar" value="lavanda" style="margin-top:9px">
+          <div class="dupla" style="margin-top:9px">
+            <input type="text" id="tPreco" value="1,99">
+            <input type="text" id="tUn" value="UN">
+          </div>
+          <button class="btn fantasma" id="btnPadrao" style="width:100%;margin-top:12px">Voltar ao padrão</button>
+          <div class="ajuda">As setas do teclado ajustam fino. Segura Shift pra andar mais rápido.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== ABA 2: LISTA ===== -->
+  <section class="painel" id="p-lista">
+    <div class="filtro" id="filtro"></div>
+
+    <div class="topo-lista">
+      <button class="btn laranja" id="btnBaixar">Baixar PNG</button>
+      <label class="marca" style="margin:0"><input type="checkbox" id="chkTodas"> Selecionar todas</label>
+      <span id="contagem" style="font-size:13px;color:var(--suave);font-weight:600"></span>
+      <button class="btn perigo" id="btnApagar" style="margin-left:auto">Apagar selecionadas</button>
+    </div>
+    <div id="lista"></div>
+  </section>
+
+</main>
+
+<div class="palco" id="palcoSaida"></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+(function(){
+'use strict';
+
+var CHAVE_PLACAS = 'placas.celular.v1';
+var CHAVE_LAYOUT = 'placas.layout.v1';
+var CHAVE_ARTE   = 'placas.arte.v1';
+var LOJAS = ['MATRIZ','FILIAL 1','FILIAL 2'];
+var lojaFiltro = 'TODAS';
+
+var $  = function(s){ return document.querySelector(s); };
+var $$ = function(s){ return [].slice.call(document.querySelectorAll(s)); };
+
+var placas = [], marcadas = {}, layout = null, arte = null, campoSel = null;
+
+var CAMPOS = [
+  { id:'descricao', nome:'Descrição' },
+  { id:'variacao',  nome:'Variação' },
+  { id:'preco',     nome:'Preço' },
+  { id:'unidade',   nome:'Unidade' }
+];
+
+var PALETA = [
+  ['#1D4686','Azul Ledur'],
+  ['#E37835','Laranja Ledur'],
+  ['#FFFFFF','Branco'],
+  ['#12203a','Preto']
+];
+
+function layoutPadrao(){
+  return {
+    descricao:{ x:7,  y:18, w:86, h:11, tam:6,   fonte:'Quicksand', peso:700, cor:'#1D4686', alinha:'center', caixa:true,  visivel:true },
+    variacao: { x:12, y:31, w:76, h:6,  tam:3.4, fonte:'Quicksand', peso:500, cor:'#12203a', alinha:'center', caixa:false, visivel:true },
+    preco:    { x:4,  y:44, w:92, h:20, tam:22,  fonte:'Poppins',   peso:800, cor:'#E37835', alinha:'center', visivel:true },
+    unidade:  { x:25, y:70, w:50, h:5,  tam:3.2, fonte:'Poppins',   peso:600, cor:'#12203a', alinha:'center', caixa:true,  visivel:true }
+  };
+}
+
+/* ---------- utilidades ---------- */
+function toast(msg, tipo){
+  var t = $('#toast');
+  t.textContent = msg;
+  t.className = 'toast ver' + (tipo ? ' ' + tipo : '');
+  clearTimeout(t._t);
+  t._t = setTimeout(function(){ t.className = 'toast'; }, 2600);
+}
+function fmt(n){ return Number(n).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function esc(s){
+  return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];
+  });
+}
+function slug(s){
+  return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60);
+}
+function hoje(){
+  var d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+/* ---------- guardar no aparelho ---------- */
+function lerLS(chave, padrao){
+  try { var b = localStorage.getItem(chave); return b ? JSON.parse(b) : padrao; }
+  catch(e){ return padrao; }
+}
+function gravarLS(chave, v){
+  try { localStorage.setItem(chave, JSON.stringify(v)); } catch(e){}
+}
+
+/* ---------- abas ---------- */
+$$('nav button').forEach(function(b){
+  b.addEventListener('click', function(){
+    var aba = b.dataset.aba;
+    $$('nav button').forEach(function(x){ x.classList.toggle('ativo', x === b); });
+    $$('.painel').forEach(function(p){ p.classList.toggle('ativo', p.id === 'p-' + aba); });
+    if(aba === 'template') requestAnimationFrame(function(){ medir(); pintar(); });
+  });
+});
+
+/* ============================================================
+   TEMPLATE
+   ============================================================ */
+function medir(){
+  var p = $('#palco');
+  p.style.setProperty('--lp', p.clientWidth + 'px');
+}
+
+$('#arquivo').addEventListener('change', function(e){
+  var f = e.target.files[0];
+  if(!f) return;
+  var fr = new FileReader();
+  fr.onload = function(){
+    reduzir(fr.result, 1500, function(url){
+      arte = url;
+      gravarLS(CHAVE_ARTE, url);
+      atualizarArte();
+      pintar();
+      toast('Template carregado');
+    });
+  };
+  fr.readAsDataURL(f);
+});
+
+function reduzir(dataUrl, maxL, pronto){
+  var img = new Image();
+  img.onload = function(){
+    var k = Math.min(1, maxL / img.naturalWidth);
+    var cv = document.createElement('canvas');
+    cv.width  = Math.round(img.naturalWidth * k);
+    cv.height = Math.round(img.naturalHeight * k);
+    cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+    pronto(cv.toDataURL('image/webp', 0.93));
+  };
+  img.onerror = function(){ pronto(dataUrl); };
+  img.src = dataUrl;
+}
+
+$('#btnTirarArte').addEventListener('click', function(){
+  arte = null;
+  try { localStorage.removeItem(CHAVE_ARTE); } catch(e){}
+  atualizarArte();
+  pintar();
+});
+
+function exemplo(){
+  return {
+    descricao: $('#tDesc').value || 'Produto exemplo',
+    variacao: $('#tVar').value,
+    preco: (function(){
+      var s = $('#tPreco').value.replace(/[^\d,.]/g,'').replace(/\./g,'').replace(',','.');
+      var n = parseFloat(s);
+      return isNaN(n) ? 0 : n;
+    })(),
+    unidade: $('#tUn').value || 'UN'
+  };
+}
+
+function conteudo(id, p, L){
+  if(id === 'preco'){
+    if(p.preco == null) return null;
+    return fmt(p.preco);
+  }
+  var v = (id === 'descricao') ? p.descricao : (id === 'variacao') ? p.variacao : p.unidade;
+  if(!v) return null;
+  return esc(L.caixa ? String(v).toUpperCase() : v);
+}
+
+var DIRS = ['nw','n','ne','e','se','s','sw','w'];
+
+function montar(el, placa, editavel){
+  el.innerHTML = '';
+  el.style.backgroundImage = arte ? 'url(' + arte + ')' : 'none';
+  CAMPOS.forEach(function(c){
+    var L = layout[c.id];
+    if(!L || !L.visivel) return;
+    var html = conteudo(c.id, placa, L);
+    if(html === null) return;
+    var d = document.createElement('div');
+    d.className = 'cmp' + (editavel ? ' edit' : '') + (editavel && campoSel === c.id ? ' sel' : '');
+    d.dataset.campo = c.id;
+    d.style.left = L.x + '%';
+    d.style.top = L.y + '%';
+    d.style.width = L.w + '%';
+    d.style.height = L.h + '%';
+    d.style.setProperty('--t', L.tam / 100);
+    d.style.fontFamily = "'" + L.fonte + "', sans-serif";
+    d.style.fontWeight = L.peso;
+    d.style.color = L.cor;
+    d.style.textAlign = L.alinha;
+    var alcas = editavel
+      ? DIRS.map(function(dir){ return '<i class="alca" data-dir="'+dir+'"></i>'; }).join('')
+      : '';
+    d.innerHTML = '<div class="txt">' + html + '</div>' + alcas;
+    el.appendChild(d);
+  });
+}
+
+function pintar(){ if(layout) montar($('#palco'), exemplo(), true); }
+window.__montar = montar;
+['#tDesc','#tVar','#tPreco','#tUn'].forEach(function(s){ $(s).addEventListener('input', pintar); });
+
+/* --- botões de campo --- */
+function botoesCampo(){
+  $('#camposBt').innerHTML = CAMPOS.map(function(c){
+    return '<button data-campo="'+c.id+'"'+(campoSel===c.id?' class="sel"':'')+'>'+c.nome+'</button>';
+  }).join('');
+}
+$('#camposBt').addEventListener('click', function(e){
+  var b = e.target.closest('[data-campo]');
+  if(!b) return;
+  campoSel = b.dataset.campo;
+  botoesCampo(); props(); pintar();
+});
+
+/* --- paleta --- */
+$('#pCores').innerHTML = PALETA.map(function(c){
+  return '<button data-cor="'+c[0]+'" title="'+c[1]+'" style="background:'+c[0]+'"></button>';
+}).join('');
+
+function props(){
+  if(!campoSel){ $('#props').classList.add('oculto'); return; }
+  var L = layout[campoSel];
+  $('#props').classList.remove('oculto');
+  $('#pFonte').value = L.fonte;
+  $('#pPeso').value = L.peso;
+  $('#pTam').value = L.tam;
+  $('#pLarg').value = L.w;
+  $('#pCaixa').checked = !!L.caixa;
+  $('#pVisivel').checked = !!L.visivel;
+  $('#wCaixa').classList.toggle('oculto', campoSel === 'preco');
+  $('#pAltura').value = L.h;
+  $$('#pAlinha button').forEach(function(b){ b.classList.toggle('sel', b.dataset.a === L.alinha); });
+  $$('#pCores button').forEach(function(b){
+    b.classList.toggle('sel', b.dataset.cor.toLowerCase() === String(L.cor).toLowerCase());
+  });
+}
+
+function mudar(prop, valor){
+  if(!campoSel) return;
+  layout[campoSel][prop] = valor;
+  pintar(); salvarLayout();
+}
+$('#pFonte').addEventListener('change', function(e){ mudar('fonte', e.target.value); });
+$('#pPeso').addEventListener('change', function(e){ mudar('peso', +e.target.value); });
+$('#pCores').addEventListener('click', function(e){
+  var b = e.target.closest('[data-cor]');
+  if(!b) return;
+  mudar('cor', b.dataset.cor); props();
+});
+$('#pTam').addEventListener('input', function(e){
+  var v = parseFloat(e.target.value); if(v > 0) mudar('tam', v);
+});
+$('#pLarg').addEventListener('input', function(e){
+  var v = parseFloat(e.target.value); if(v > 0) mudar('w', v);
+});
+$('#pAltura').addEventListener('input', function(e){
+  var v = parseFloat(e.target.value); if(v > 0) mudar('h', v);
+});
+$('#pCaixa').addEventListener('change', function(e){ mudar('caixa', e.target.checked); });
+$('#pVisivel').addEventListener('change', function(e){ mudar('visivel', e.target.checked); });
+$('#pAlinha').addEventListener('click', function(e){
+  var b = e.target.closest('[data-a]');
+  if(!b) return;
+  mudar('alinha', b.dataset.a); props();
+});
+$('#btnPadrao').addEventListener('click', function(){
+  if(!confirm('Voltar todos os campos ao padrão?')) return;
+  layout = layoutPadrao();
+  botoesCampo(); props(); pintar(); salvarLayout();
+  toast('Layout no padrão');
+});
+
+function salvarLayout(){ gravarLS(CHAVE_LAYOUT, layout); }
+
+/* --- arrastar e redimensionar --- */
+(function(){
+  var palco = $('#palco'), modo = null, alvo = null, ini = null, dir = null;
+  var pos = function(e){ var t = e.touches ? e.touches[0] : e; return { x:t.clientX, y:t.clientY }; };
+
+  function comecar(e){
+    var cmp = e.target.closest('.cmp.edit');
+    if(!cmp) return;
+    campoSel = cmp.dataset.campo;
+    botoesCampo(); props();
+    $$('.cmp.edit').forEach(function(c){ c.classList.toggle('sel', c.dataset.campo === campoSel); });
+
+    var alca = e.target.closest('.alca');
+    modo = alca ? 'redim' : 'mover';
+    dir = alca ? alca.dataset.dir : null;
+    alvo = campoSel;
+    var r = palco.getBoundingClientRect(), p = pos(e);
+    ini = { px:p.x, py:p.y, lp:r.width, ap:r.height };
+    ['x','y','w','h','tam'].forEach(function(k){ ini[k] = layout[alvo][k]; });
+    e.preventDefault();
+  }
+
+  function mover(e){
+    if(!modo) return;
+    e.preventDefault();
+    var p = pos(e);
+    var dx = (p.x - ini.px) / ini.lp * 100;
+    var dy = (p.y - ini.py) / ini.ap * 100;
+    var L = layout[alvo], r2 = function(v){ return Math.round(v*100)/100; };
+
+    if(modo === 'mover'){
+      L.x = r2(Math.max(0, Math.min(100 - L.w, ini.x + dx)));
+      L.y = r2(Math.max(0, Math.min(100 - L.h, ini.y + dy)));
+      pintar();
+      return;
+    }
+
+    var x = ini.x, y = ini.y, w = ini.w, h = ini.h;
+
+    if(dir.indexOf('e') >= 0) w = Math.max(4, Math.min(100 - ini.x, ini.w + dx));
+    if(dir.indexOf('w') >= 0){
+      w = Math.max(4, Math.min(ini.x + ini.w, ini.w - dx));
+      x = ini.x + ini.w - w;
+    }
+    if(dir.indexOf('s') >= 0) h = Math.max(2, Math.min(100 - ini.y, ini.h + dy));
+    if(dir.indexOf('n') >= 0){
+      h = Math.max(2, Math.min(ini.y + ini.h, ini.h - dy));
+      y = ini.y + ini.h - h;
+    }
+
+    L.x = r2(Math.max(0, x));
+    L.y = r2(Math.max(0, y));
+    L.w = r2(w);
+    L.h = r2(h);
+
+    // nos cantos a fonte acompanha a largura; nas laterais só a caixa muda
+    if(dir.length === 2){
+      L.tam = Math.round(Math.max(0.6, Math.min(45, ini.tam * (w / ini.w))) * 10) / 10;
+    }
+    pintar();
+  }
+
+  function fim(){
+    if(!modo) return;
+    modo = null; alvo = null; dir = null;
+    props(); salvarLayout();
+  }
+
+  palco.addEventListener('mousedown', comecar);
+  window.addEventListener('mousemove', mover);
+  window.addEventListener('mouseup', fim);
+
+  window.addEventListener('keydown', function(e){
+    if(!campoSel || !$('#p-template').classList.contains('ativo')) return;
+    if(document.activeElement && /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) return;
+    var passo = e.shiftKey ? 1 : 0.2, L = layout[campoSel];
+    if(e.key === 'ArrowLeft') L.x -= passo;
+    else if(e.key === 'ArrowRight') L.x += passo;
+    else if(e.key === 'ArrowUp') L.y -= passo;
+    else if(e.key === 'ArrowDown') L.y += passo;
+    else return;
+    L.x = Math.max(0, Math.min(100 - L.w, Math.round(L.x*100)/100));
+    L.y = Math.max(0, Math.min(100 - L.h, Math.round(L.y*100)/100));
+    e.preventDefault(); pintar(); props(); salvarLayout();
+  });
+})();
+
+/* ============================================================
+   LISTA
+   ============================================================ */
+function carregarPlacas(){
+  placas = lerLS(CHAVE_PLACAS, []) || [];
+  if(!Array.isArray(placas)) placas = [];
+  Object.keys(marcadas).forEach(function(id){
+    if(!placas.some(function(p){ return p.id === id; })) delete marcadas[id];
+  });
+  renderLista();
+}
+
+function lojaDe(p){ return p.loja || 'SEM LOJA'; }
+
+function visiveis(){
+  return lojaFiltro === 'TODAS'
+    ? placas
+    : placas.filter(function(p){ return lojaDe(p) === lojaFiltro; });
+}
+
+function montarFiltro(){
+  var opcoes = ['TODAS'].concat(LOJAS);
+  // placas antigas, feitas antes das lojas existirem
+  if(placas.some(function(p){ return !p.loja; })) opcoes.push('SEM LOJA');
+  $('#filtro').innerHTML = opcoes.map(function(o){
+    var n = o === 'TODAS' ? placas.length
+      : placas.filter(function(p){ return lojaDe(p) === o; }).length;
+    return '<button data-loja="'+o+'"'+(lojaFiltro===o?' class="sel"':'')+'>' +
+           o + '<em>'+n+'</em></button>';
+  }).join('');
+}
+
+function renderLista(){
+  montarFiltro();
+  var lista = visiveis();
+  var n = Object.keys(marcadas).length;
+  var selo = $('#selo');
+  selo.textContent = placas.length;
+  selo.classList.toggle('oculto', placas.length === 0);
+
+  $('#contagem').textContent = n
+    ? n + (n === 1 ? ' selecionada' : ' selecionadas') + ' de ' + lista.length
+    : lista.length + (lista.length === 1 ? ' placa' : ' placas');
+  $('#btnBaixar').disabled = !n;
+  $('#btnApagar').disabled = !n;
+  $('#chkTodas').checked = lista.length > 0 && lista.every(function(p){ return marcadas[p.id]; });
+
+  if(!lista.length){
+    $('#lista').innerHTML =
+      '<div class="vazio"><strong>Nenhuma placa' +
+      (lojaFiltro === 'TODAS' ? '' : ' na ' + lojaFiltro) + '</strong>' +
+      'As placas enviadas do celular vão aparecer aqui.</div>';
+    return;
+  }
+
+  $('#lista').innerHTML = lista.map(function(p){
+    return '<div class="item' + (marcadas[p.id] ? ' marcada' : '') + '" data-id="'+p.id+'">' +
+      '<input type="checkbox"' + (marcadas[p.id] ? ' checked' : '') + '>' +
+      '<div class="loja' + (p.loja ? '' : ' vazia') + '">' + esc(lojaDe(p)) + '</div>' +
+      '<div class="nome">' + esc(p.produto || p.descricao) +
+        (p.variacao ? ' <span style="color:var(--suave);font-weight:500">· ' + esc(p.variacao) + '</span>' : '') +
+      '</div>' +
+      '<div class="un">' + esc(p.unidade || 'UN') + '</div>' +
+      '<div class="preco">' + fmt(p.preco) + '</div>' +
+      '<button class="lixo" data-del="'+p.id+'">&times;</button>' +
+    '</div>';
+  }).join('');
+}
+
+$('#lista').addEventListener('click', function(e){
+  var del = e.target.closest('[data-del]');
+  if(del){
+    placas = placas.filter(function(p){ return p.id !== del.dataset.del; });
+    delete marcadas[del.dataset.del];
+    gravarLS(CHAVE_PLACAS, placas);
+    renderLista();
+    return;
+  }
+  var item = e.target.closest('.item');
+  if(!item) return;
+  var id = item.dataset.id;
+  if(marcadas[id]) delete marcadas[id]; else marcadas[id] = true;
+  renderLista();
+});
+
+$('#filtro').addEventListener('click', function(e){
+  var b = e.target.closest('[data-loja]');
+  if(!b) return;
+  lojaFiltro = b.dataset.loja;
+  marcadas = {};
+  renderLista();
+});
+
+$('#chkTodas').addEventListener('change', function(e){
+  marcadas = {};
+  if(e.target.checked) visiveis().forEach(function(p){ marcadas[p.id] = true; });
+  renderLista();
+});
+
+$('#btnApagar').addEventListener('click', function(){
+  var ids = Object.keys(marcadas);
+  if(!ids.length) return;
+  if(!confirm('Apagar ' + ids.length + (ids.length === 1 ? ' placa?' : ' placas?'))) return;
+  placas = placas.filter(function(p){ return !marcadas[p.id]; });
+  marcadas = {};
+  gravarLS(CHAVE_PLACAS, placas);
+  renderLista();
+  toast('Apagadas');
+});
+
+/* ---------- baixar PNG ---------- */
+function normalizar(p){
+  return {
+    descricao: p.produto || p.descricao || '',
+    variacao: p.variacao || '',
+    preco: p.preco,
+    unidade: p.unidade || 'UN'
+  };
+}
+
+function gerarPNG(placa, pronto){
+  var saida = $('#palcoSaida');
+  saida.style.setProperty('--lp', '1488px');
+  montar(saida, normalizar(placa), false);
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){
+      html2canvas(saida, { width:1488, height:2105, scale:1, backgroundColor:'#ffffff', useCORS:true, logging:false })
+        .then(function(cv){ cv.toBlob(pronto, 'image/png'); });
+    });
+  });
+}
+
+$('#btnBaixar').addEventListener('click', function(){
+  var lista = placas.filter(function(p){ return marcadas[p.id]; });
+  if(!lista.length) return;
+
+  var btn = $('#btnBaixar');
+  btn.disabled = true;
+  var i = 0;
+
+  function proxima(){
+    if(i >= lista.length){
+      btn.disabled = false;
+      btn.textContent = 'Baixar PNG';
+      toast(lista.length + (lista.length === 1 ? ' PNG baixado' : ' PNGs baixados'), 'ok');
+      return;
+    }
+    var p = lista[i];
+    btn.textContent = 'Gerando ' + (i+1) + '/' + lista.length;
+    gerarPNG(p, function(blob){
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = hoje() + '_' + slug(p.produto || p.descricao) + '.png';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
+      i++;
+      setTimeout(proxima, 350);
+    });
+  }
+  proxima();
+});
+
+/* ============================================================
+   INÍCIO
+   ============================================================ */
+layout = Object.assign(layoutPadrao(), lerLS(CHAVE_LAYOUT, null) || {});
+CAMPOS.forEach(function(c){
+  layout[c.id] = Object.assign(layoutPadrao()[c.id], layout[c.id] || {});
+});
+arte = lerLS(CHAVE_ARTE, null);
+atualizarArte();
+
+function atualizarArte(){
+  $('#chipArte').textContent = arte ? 'template carregado' : 'sem template';
+  $('#avisoArte').classList.toggle('oculto', !!arte);
+}
+
+botoesCampo();
+medir();
+pintar();
+carregarPlacas();
+new ResizeObserver(medir).observe($('#palco'));
+
+// se o celular gravar no mesmo navegador, a lista atualiza sozinha
+window.addEventListener('storage', function(e){
+  if(e.key === CHAVE_PLACAS) carregarPlacas();
+});
+
+})();
+</script>
+</body>
+</html>
