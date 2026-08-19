@@ -59,7 +59,7 @@ main{padding:20px;max-width:1240px;margin:0 auto}
   box-shadow:0 10px 34px rgba(18,32,58,.2);overflow:hidden;user-select:none;
 }
 .cmp{position:absolute;line-height:1.05;font-size:calc(var(--lp) * var(--t));
-  display:flex;align-items:center}
+  display:flex;align-items:center;overflow:hidden}
 .cmp > .txt{width:100%;word-break:break-word}
 .cmp.edit{cursor:move;outline:1px dashed rgba(29,70,134,.32);outline-offset:2px}
 .cmp.edit:hover{outline-color:rgba(29,70,134,.7)}
@@ -463,11 +463,24 @@ var DIRS = ['nw','n','ne','e','se','s','sw','w'];
 function montar(el, placa, editavel){
   el.innerHTML = '';
   el.style.backgroundImage = arte ? 'url(' + arte + ')' : 'none';
+  var temVariacao = layout.variacao && layout.variacao.visivel && placa.variacao;
+
   CAMPOS.forEach(function(c){
     var L = layout[c.id];
     if(!L || !L.visivel) return;
     var html = conteudo(c.id, placa, L);
     if(html === null) return;
+
+    // sem variação, a descrição se estica até onde a variação terminaria
+    if(c.id === 'descricao' && !temVariacao && layout.variacao){
+      var fim = layout.variacao.y + layout.variacao.h;
+      // mas nunca até encostar no preço
+      if(layout.preco && layout.preco.visivel) fim = Math.min(fim, layout.preco.y);
+      if(fim > L.y + L.h){
+        L = Object.assign({}, L, { h: fim - L.y });
+      }
+    }
+
     var d = document.createElement('div');
     d.className = 'cmp' + (editavel ? ' edit' : '') + (editavel && campoSel === c.id ? ' sel' : '');
     d.dataset.campo = c.id;
@@ -485,7 +498,29 @@ function montar(el, placa, editavel){
       : '';
     d.innerHTML = '<div class="txt">' + html + '</div>' + alcas;
     el.appendChild(d);
+    caber(d, L);
   });
+}
+
+// reduz a fonte ate o texto caber na caixa
+function caber(d, L){
+  var txt = d.querySelector('.txt');
+  if(!txt) return;
+  var base = L.tam / 100;
+  var fator = 1;
+  var passo = 0;
+  while(passo < 60 &&
+        (txt.scrollHeight > d.clientHeight + 1 || txt.scrollWidth > d.clientWidth + 1)){
+    fator -= 0.03;
+    if(fator < 0.15) break;
+    d.style.setProperty('--t', base * fator);
+    passo++;
+  }
+}
+
+// as fontes da web chegam depois do primeiro desenho: refaz a conta quando carregarem
+if(document.fonts && document.fonts.ready){
+  document.fonts.ready.then(function(){ pintar(); });
 }
 
 function pintar(){ if(layout) montar($('#palco'), exemplo(), true); }
