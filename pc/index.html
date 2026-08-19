@@ -317,6 +317,7 @@ window.__apagar = function(ids){
 
 var CHAVE_LAYOUT = 'placas.layout.v1';
 var CHAVE_ARTE   = 'placas.arte.v1';
+var CHAVE_TESTE  = 'placas.teste.v1';
 var LOJAS = ['MATRIZ','FILIAL 1','FILIAL 2'];
 var lojaFiltro = 'TODAS';
 
@@ -525,7 +526,27 @@ if(document.fonts && document.fonts.ready){
 
 function pintar(){ if(layout) montar($('#palco'), exemplo(), true); }
 window.__montar = montar;
-['#tDesc','#tVar','#tPreco','#tUn'].forEach(function(s){ $(s).addEventListener('input', pintar); });
+
+/* o texto de teste fica guardado pra não perder o que foi ajustado */
+var CAMPOS_TESTE = ['tDesc','tVar','tPreco','tUn'];
+
+function salvarTeste(){
+  var v = {};
+  CAMPOS_TESTE.forEach(function(id){ v[id] = $('#'+id).value; });
+  gravarLS(CHAVE_TESTE, v);
+}
+
+(function(){
+  var salvo = lerLS(CHAVE_TESTE, null);
+  if(!salvo) return;
+  CAMPOS_TESTE.forEach(function(id){
+    if(typeof salvo[id] === 'string') $('#'+id).value = salvo[id];
+  });
+})();
+
+CAMPOS_TESTE.forEach(function(id){
+  $('#'+id).addEventListener('input', function(){ pintar(); salvarTeste(); });
+});
 
 /* --- botões de campo --- */
 function botoesCampo(){
