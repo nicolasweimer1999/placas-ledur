@@ -20,9 +20,9 @@ button,input,select{font-family:inherit;font-size:15px}
 button{cursor:pointer;border:0}
 .oculto{display:none !important}
 
-header{background:var(--navy);color:#fff;padding:13px 22px;display:flex;align-items:center;gap:12px}
-header img{height:26px;width:auto;display:block;background:#fff;border-radius:7px;padding:3px 7px}
-header .tit{font-weight:700;font-size:18px}
+header{background:var(--navy);color:#fff;padding:16px 22px;display:flex;align-items:center;gap:14px}
+header img{height:36px;width:auto;display:block;background:#fff;border-radius:9px;padding:4px 9px}
+header .tit{font-weight:700;font-size:22px;letter-spacing:-.02em}
 header .sub{margin-left:auto;font-size:12.5px;opacity:.7}
 
 nav{display:flex;background:var(--navy-esc)}
@@ -276,7 +276,9 @@ var app = initializeApp({
   appId: "1:518682216405:web:7f5f114839449a05c39f5c"
 });
 var db = initializeFirestore(app, {
-  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+  // rede de empresa costuma bloquear WebSocket; isso detecta e usa outro caminho
+  experimentalAutoDetectLongPolling: true
 });
 var colPlacas = collection(db, 'placas');
 
@@ -298,11 +300,23 @@ onSnapshot(query(colPlacas, orderBy('criadaEm','desc'), limit(600)), function(sn
   document.getElementById('luzTxt').textContent = 'erro';
 });
 
+var jaTentou = false;
+
 function pintarLuz(){
-  var online = navigator.onLine && window.__servidorOk;
-  document.getElementById('luz').style.background = online ? '#4ade80' : '#f8b471';
-  document.getElementById('luzTxt').textContent = online ? 'conectado' : 'sem conexão';
+  var luz = document.getElementById('luz');
+  var txt = document.getElementById('luzTxt');
+  if(navigator.onLine && window.__servidorOk){
+    luz.style.background = '#4ade80'; txt.textContent = 'conectado';
+  } else if(!navigator.onLine){
+    luz.style.background = '#f87171'; txt.textContent = 'sem internet';
+  } else if(!jaTentou){
+    luz.style.background = '#7d8aa5'; txt.textContent = 'conectando';
+  } else {
+    luz.style.background = '#f8b471'; txt.textContent = 'sem conexão';
+  }
 }
+
+setTimeout(function(){ jaTentou = true; pintarLuz(); }, 8000);
 window.addEventListener('online', pintarLuz);
 window.addEventListener('offline', pintarLuz);
 
