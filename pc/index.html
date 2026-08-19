@@ -157,7 +157,10 @@ select:focus,input:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(29,7
 
 <header>
   <div class="tit">Placas Ledur</div>
-  <div class="sub">computador</div>
+  <div class="sub" style="display:flex;align-items:center;gap:7px">
+    <span id="luz" style="width:8px;height:8px;border-radius:50%;background:#7d8aa5;display:inline-block"></span>
+    <span id="luzTxt">conectando</span>
+  </div>
 </header>
 
 <nav>
@@ -255,11 +258,63 @@ select:focus,input:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(29,7
 <div class="toast" id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import {
+  initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+  collection, doc, deleteDoc, onSnapshot, query, orderBy, limit, writeBatch
+} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+var app = initializeApp({
+  apiKey: "AIzaSyCltD4TzYkrN6bMc4hmSF1vjC6_YFLHtZQ",
+  authDomain: "placas-ledur.firebaseapp.com",
+  projectId: "placas-ledur",
+  storageBucket: "placas-ledur.firebasestorage.app",
+  messagingSenderId: "518682216405",
+  appId: "1:518682216405:web:7f5f114839449a05c39f5c"
+});
+var db = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+});
+var colPlacas = collection(db, 'placas');
+
+// escuta a coleção: o que o celular manda aparece aqui sozinho
+onSnapshot(query(colPlacas, orderBy('criadaEm','desc'), limit(600)), function(snap){
+  var lista = snap.docs.map(function(d){
+    var v = d.data();
+    return {
+      id: d.id, loja: v.loja, produto: v.produto, variacao: v.variacao,
+      preco: v.preco, unidade: v.unidade
+    };
+  });
+  if(!snap.metadata.fromCache) window.__servidorOk = true;
+  pintarLuz();
+  if(window.__receber) window.__receber(lista);
+}, function(e){
+  console.error(e);
+  document.getElementById('luz').style.background = '#f87171';
+  document.getElementById('luzTxt').textContent = 'erro';
+});
+
+function pintarLuz(){
+  var online = navigator.onLine && window.__servidorOk;
+  document.getElementById('luz').style.background = online ? '#4ade80' : '#f8b471';
+  document.getElementById('luzTxt').textContent = online ? 'conectado' : 'sem conexão';
+}
+window.addEventListener('online', pintarLuz);
+window.addEventListener('offline', pintarLuz);
+
+window.__apagar = function(ids){
+  var lote = writeBatch(db);
+  ids.forEach(function(id){ lote.delete(doc(colPlacas, id)); });
+  return lote.commit();
+};
+</script>
+
 <script>
 (function(){
 'use strict';
 
-var CHAVE_PLACAS = 'placas.celular.v1';
 var CHAVE_LAYOUT = 'placas.layout.v1';
 var CHAVE_ARTE   = 'placas.arte.v1';
 var LOJAS = ['MATRIZ','FILIAL 1','FILIAL 2'];
@@ -600,14 +655,13 @@ function salvarLayout(){ gravarLS(CHAVE_LAYOUT, layout); }
 /* ============================================================
    LISTA
    ============================================================ */
-function carregarPlacas(){
-  placas = lerLS(CHAVE_PLACAS, []) || [];
-  if(!Array.isArray(placas)) placas = [];
+window.__receber = function(lista){
+  placas = lista || [];
   Object.keys(marcadas).forEach(function(id){
     if(!placas.some(function(p){ return p.id === id; })) delete marcadas[id];
   });
   renderLista();
-}
+};
 
 function lojaDe(p){ return p.loja || 'SEM LOJA'; }
 
@@ -669,10 +723,8 @@ function renderLista(){
 $('#lista').addEventListener('click', function(e){
   var del = e.target.closest('[data-del]');
   if(del){
-    placas = placas.filter(function(p){ return p.id !== del.dataset.del; });
     delete marcadas[del.dataset.del];
-    gravarLS(CHAVE_PLACAS, placas);
-    renderLista();
+    window.__apagar([del.dataset.del]).catch(function(){ toast('Não consegui apagar', 'erro'); });
     return;
   }
   var item = e.target.closest('.item');
@@ -700,11 +752,9 @@ $('#btnApagar').addEventListener('click', function(){
   var ids = Object.keys(marcadas);
   if(!ids.length) return;
   if(!confirm('Apagar ' + ids.length + (ids.length === 1 ? ' placa?' : ' placas?'))) return;
-  placas = placas.filter(function(p){ return !marcadas[p.id]; });
   marcadas = {};
-  gravarLS(CHAVE_PLACAS, placas);
-  renderLista();
-  toast('Apagadas');
+  window.__apagar(ids).then(function(){ toast('Apagadas'); })
+    .catch(function(){ toast('Não consegui apagar', 'erro'); });
 });
 
 /* ---------- baixar PNG ---------- */
@@ -777,15 +827,10 @@ function atualizarArte(){
 }
 
 botoesCampo();
+renderLista();
 medir();
 pintar();
-carregarPlacas();
 new ResizeObserver(medir).observe($('#palco'));
-
-// se o celular gravar no mesmo navegador, a lista atualiza sozinha
-window.addEventListener('storage', function(e){
-  if(e.key === CHAVE_PLACAS) carregarPlacas();
-});
 
 })();
 </script>
