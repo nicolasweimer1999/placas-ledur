@@ -264,7 +264,7 @@ select:focus,input:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(29,7
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-  collection, doc, deleteDoc, onSnapshot, query, orderBy, limit, writeBatch
+  collection, doc, setDoc, deleteDoc, onSnapshot, query, orderBy, limit, writeBatch
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 var app = initializeApp({
@@ -319,6 +319,20 @@ function pintarLuz(){
 setTimeout(function(){ jaTentou = true; pintarLuz(); }, 8000);
 window.addEventListener('online', pintarLuz);
 window.addEventListener('offline', pintarLuz);
+
+// configuração do template: vale para todos os computadores com o mesmo link
+var refConfig = doc(db, 'config', 'template');
+
+onSnapshot(refConfig, function(snap){
+  if(!snap.exists()) return;
+  if(snap.metadata.hasPendingWrites) return;   // eco da própria gravação
+  if(window.__aplicarConfig) window.__aplicarConfig(snap.data());
+}, function(e){ console.error(e); });
+
+window.__salvarConfig = function(dados){
+  return setDoc(refConfig, dados, { merge: true });
+};
+
 
 window.__apagar = function(ids){
   var lote = writeBatch(db);
@@ -425,7 +439,23 @@ $('#arquivo').addEventListener('change', function(e){
       gravarLS(CHAVE_ARTE, url);
       atualizarArte();
       pintar();
-      toast('Template carregado');
+
+      var kb = Math.round(url.length / 1024);
+      if(!window.__salvarConfig){
+        toast('Template carregado (só neste computador)');
+        return;
+      }
+      if(url.length > 950000){
+        toast('Template pesado demais (' + kb + ' KB) — vale só aqui', 'erro');
+        return;
+      }
+      toast('Enviando template (' + kb + ' KB)...');
+      window.__salvarConfig({ arte: url, campos: layout }).then(function(){
+        toast('Template salvo pra todos', 'ok');
+      }).catch(function(err){
+        console.error(err);
+        toast('Não consegui enviar o template', 'erro');
+      });
     });
   };
   fr.readAsDataURL(f);
@@ -439,17 +469,33 @@ function reduzir(dataUrl, maxL, pronto){
     cv.width  = Math.round(img.naturalWidth * k);
     cv.height = Math.round(img.naturalHeight * k);
     cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
-    pronto(cv.toDataURL('image/webp', 0.93));
+
+    // precisa caber num documento do Firestore (1 MB), entao aperta ate caber
+    var q = 0.9, url = cv.toDataURL('image/webp', q);
+    while(url.length > 880000 && q > 0.4){
+      q -= 0.08;
+      url = cv.toDataURL('image/webp', q);
+    }
+    if(url.length > 880000){
+      var cv2 = document.createElement('canvas');
+      cv2.width  = Math.round(cv.width * 0.72);
+      cv2.height = Math.round(cv.height * 0.72);
+      cv2.getContext('2d').drawImage(cv, 0, 0, cv2.width, cv2.height);
+      url = cv2.toDataURL('image/webp', 0.8);
+    }
+    pronto(url);
   };
   img.onerror = function(){ pronto(dataUrl); };
   img.src = dataUrl;
 }
 
 $('#btnTirarArte').addEventListener('click', function(){
+  if(arte && !confirm('Remover o template? Isso vale pra todos os computadores.')) return;
   arte = null;
   try { localStorage.removeItem(CHAVE_ARTE); } catch(e){}
   atualizarArte();
   pintar();
+  if(window.__salvarConfig) window.__salvarConfig({ arte: '' });
 });
 
 function exemplo(){
@@ -635,7 +681,41 @@ $('#btnPadrao').addEventListener('click', function(){
   toast('Layout no padrão');
 });
 
-function salvarLayout(){ gravarLS(CHAVE_LAYOUT, layout); }
+var vindoDeFora = false;
+
+function salvarLayout(){
+  gravarLS(CHAVE_LAYOUT, layout);
+  if(vindoDeFora || !window.__salvarConfig) return;
+  clearTimeout(salvarLayout._t);
+  salvarLayout._t = setTimeout(function(){
+    window.__salvarConfig({ campos: layout }).catch(function(e){
+      console.error(e); toast('Não consegui salvar as posições', 'erro');
+    });
+  }, 700);
+}
+
+// chega alteração feita em outro computador
+window.__aplicarConfig = function(d){
+  vindoDeFora = true;
+  try {
+    if(d.campos){
+      var base = layoutPadrao();
+      CAMPOS.forEach(function(c){
+        layout[c.id] = Object.assign({}, base[c.id], d.campos[c.id] || {});
+      });
+      gravarLS(CHAVE_LAYOUT, layout);
+      botoesCampo(); props();
+    }
+    if(typeof d.arte === 'string' && d.arte !== arte){
+      arte = d.arte || null;
+      gravarLS(CHAVE_ARTE, arte);
+      atualizarArte();
+    }
+    pintar();
+  } finally {
+    setTimeout(function(){ vindoDeFora = false; }, 60);
+  }
+};
 
 /* --- arrastar e redimensionar --- */
 (function(){
