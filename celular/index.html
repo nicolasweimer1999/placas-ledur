@@ -29,12 +29,13 @@ button{cursor:pointer;border:0}
 
 header{
   background:var(--navy);color:#fff;
-  padding:12px 18px;padding-top:calc(12px + env(safe-area-inset-top));
-  display:flex;align-items:center;gap:12px;
+  padding:18px 18px 20px;
+  padding-top:calc(26px + env(safe-area-inset-top));
+  display:flex;align-items:center;gap:14px;
 }
-header img{height:26px;width:auto;display:block;background:#fff;border-radius:7px;padding:3px 7px}
-header .tit{font-weight:700;font-size:18px;letter-spacing:-.01em}
-header .barra{width:1px;height:22px;background:rgba(255,255,255,.28)}
+header img{height:42px;width:auto;display:block;background:#fff;border-radius:10px;padding:5px 10px}
+header .tit{font-weight:700;font-size:26px;letter-spacing:-.02em}
+header .barra{width:1px;height:30px;background:rgba(255,255,255,.3)}
 
 nav{display:flex;background:var(--navy-esc);position:sticky;top:0;z-index:40}
 nav button{
@@ -148,8 +149,8 @@ input[type=text]:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(29,70,
 .vazio span{font-size:14px;line-height:1.5}
 
 .conexao{
-  display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:600;
-  color:rgba(255,255,255,.8);margin-left:auto;
+  display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;
+  color:rgba(255,255,255,.72);margin-left:auto;
 }
 .conexao .luz{width:8px;height:8px;border-radius:50%;background:#7d8aa5}
 .conexao .luz.on{background:#4ade80}
@@ -253,7 +254,9 @@ var app = initializeApp({
   appId: "1:518682216405:web:7f5f114839449a05c39f5c"
 });
 var db = initializeFirestore(app, {
-  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+  // rede de empresa costuma bloquear WebSocket; isso detecta e usa outro caminho
+  experimentalAutoDetectLongPolling: true
 });
 var colPlacas = collection(db, 'placas');
 
@@ -272,11 +275,24 @@ window.__enviarPlaca = function(p){
 // luz do cabeçalho: estado da rede do aparelho
 var servidorOk = false;
 
+var jaTentou = false;
+
 function pintarLuz(){
-  var online = navigator.onLine && servidorOk;
-  document.getElementById('luz').className = 'luz ' + (online ? 'on' : 'off');
-  document.getElementById('luzTxt').textContent = online ? 'conectado' : 'sem sinal';
+  var luz = document.getElementById('luz');
+  var txt = document.getElementById('luzTxt');
+  if(navigator.onLine && servidorOk){
+    luz.className = 'luz on'; txt.textContent = 'conectado';
+  } else if(!navigator.onLine){
+    luz.className = 'luz off'; txt.textContent = 'sem internet';
+  } else if(!jaTentou){
+    luz.className = 'luz'; txt.textContent = 'conectando';
+  } else {
+    luz.className = 'luz off'; txt.textContent = 'sem sinal';
+  }
 }
+
+// so acusa problema depois de dar tempo do servidor responder
+setTimeout(function(){ jaTentou = true; pintarLuz(); }, 8000);
 
 onSnapshot(query(colPlacas, limit(1)), function(snap){
   if(!snap.metadata.fromCache) servidorOk = true;
