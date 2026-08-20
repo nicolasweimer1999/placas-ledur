@@ -63,7 +63,8 @@ main{padding:20px;max-width:1240px;margin:0 auto}
 }
 .cmp{position:absolute;line-height:1.05;font-size:calc(var(--lp) * var(--t));
   display:flex;align-items:center;overflow:hidden}
-.cmp > .txt{width:100%;word-break:normal;overflow-wrap:normal;hyphens:none}
+.cmp > .txt{width:100%;word-break:normal;overflow-wrap:normal;hyphens:none;
+  text-wrap:balance}
 .cmp.edit{cursor:move;outline:1px dashed rgba(29,70,134,.32);outline-offset:2px}
 .cmp.edit:hover{outline-color:rgba(29,70,134,.7)}
 .cmp.edit.sel{outline:2px solid var(--navy);outline-offset:2px;z-index:5}
@@ -139,6 +140,19 @@ select:focus,input:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(29,7
 .item .un{font-size:13px;color:var(--suave);font-weight:700;background:#eef2f9;border-radius:6px;padding:4px 9px}
 .item .preco{font-family:'Poppins';font-weight:700;font-size:22px;color:var(--laranja);min-width:92px;text-align:right}
 .lixo{background:none;color:#bcc3d1;font-size:21px;padding:2px 5px;line-height:1}
+.lapis{background:none;color:#bcc3d1;font-size:16px;padding:2px 6px;line-height:1}
+.lapis:hover{color:var(--navy)}
+.item.editando{border-left-color:var(--navy);background:#f7f9fc;flex-wrap:wrap;gap:9px}
+.item.editando input,.item.editando select{
+  padding:9px 11px;border:1.5px solid var(--linha);border-radius:9px;font-size:14.5px;font-weight:500;
+}
+.ed-produto{flex:1;min-width:180px}
+.ed-var{flex:1;min-width:120px}
+.ed-preco{width:110px;font-family:'Poppins';font-weight:700}
+.ed-un{width:92px}
+.ed-ok,.ed-nao{border-radius:9px;padding:9px 14px;font-size:14px;font-weight:700;border:0}
+.ed-ok{background:var(--navy);color:#fff}
+.ed-nao{background:#fff;color:var(--suave);border:1.5px solid var(--linha)}
 .lixo:hover{color:var(--erro)}
 .vazio{text-align:center;padding:60px 24px;color:var(--suave);background:#fff;border:1px dashed var(--linha);border-radius:14px}
 .vazio strong{display:block;color:var(--texto);font-size:17px;margin-bottom:8px;font-weight:700}
@@ -266,7 +280,7 @@ select:focus,input:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(29,7
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-  collection, doc, setDoc, deleteDoc, onSnapshot, query, orderBy, limit, writeBatch
+  collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, limit, writeBatch
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 var app = initializeApp({
@@ -335,6 +349,10 @@ window.__salvarConfig = function(dados){
   return setDoc(refConfig, dados, { merge: true });
 };
 
+
+window.__editar = function(id, dados){
+  return updateDoc(doc(colPlacas, id), dados);
+};
 
 window.__apagar = function(ids){
   var lote = writeBatch(db);
@@ -847,7 +865,35 @@ window.__receber = function(lista){
   renderLista();
 };
 
+var editando = null;
+var UNIDADES = ['UN','CX','PC','SC','GF'];
+
 function lojaDe(p){ return p.loja || 'SEM LOJA'; }
+
+function paraNumero(v){
+  if(v === null || v === undefined || v === '') return null;
+  var t = String(v).trim().replace(/[^\d,.]/g,'');
+  if(!t) return null;
+  if(t.indexOf(',') >= 0) t = t.replace(/\./g,'').replace(',','.');
+  else { var pt = t.split('.'); t = (pt.length === 2 && pt[1].length <= 2) ? pt.join('.') : pt.join(''); }
+  var n = parseFloat(t);
+  return isNaN(n) ? null : n;
+}
+
+function linhaEdicao(p){
+  var un = p.unidade || 'UN';
+  var lista = UNIDADES.indexOf(un) < 0 ? [un].concat(UNIDADES) : UNIDADES;
+  return '<div class="item editando" data-id="'+p.id+'">' +
+    '<div class="loja">' + esc(lojaDe(p)) + '</div>' +
+    '<input class="ed-produto" value="' + esc(p.produto || p.descricao) + '" placeholder="produto">' +
+    '<input class="ed-var" value="' + esc(p.variacao || '') + '" placeholder="variação">' +
+    '<input class="ed-preco" value="' + fmt(p.preco) + '">' +
+    '<select class="ed-un">' + lista.map(function(u){
+        return '<option'+(u===un?' selected':'')+'>'+u+'</option>'; }).join('') + '</select>' +
+    '<button class="ed-ok" data-salvar="'+p.id+'">Salvar</button>' +
+    '<button class="ed-nao" data-cancelar="1">Cancelar</button>' +
+  '</div>';
+}
 
 function visiveis(){
   return lojaFiltro === 'TODAS'
@@ -891,6 +937,7 @@ function renderLista(){
   }
 
   $('#lista').innerHTML = lista.map(function(p){
+    if(editando === p.id) return linhaEdicao(p);
     return '<div class="item' + (marcadas[p.id] ? ' marcada' : '') + '" data-id="'+p.id+'">' +
       '<input type="checkbox"' + (marcadas[p.id] ? ' checked' : '') + '>' +
       '<div class="loja' + (p.loja ? '' : ' vazia') + '">' + esc(lojaDe(p)) + '</div>' +
@@ -899,6 +946,7 @@ function renderLista(){
       '</div>' +
       '<div class="un">' + esc(p.unidade || 'UN') + '</div>' +
       '<div class="preco">' + fmt(p.preco) + '</div>' +
+      '<button class="lapis" data-edit="'+p.id+'" title="Editar">&#9998;</button>' +
       '<button class="lixo" data-del="'+p.id+'">&times;</button>' +
     '</div>';
   }).join('');
@@ -911,11 +959,54 @@ $('#lista').addEventListener('click', function(e){
     window.__apagar([del.dataset.del]).catch(function(){ toast('Não consegui apagar', 'erro'); });
     return;
   }
+
+  var lapis = e.target.closest('[data-edit]');
+  if(lapis){
+    editando = lapis.dataset.edit;
+    renderLista();
+    var campo = $('.ed-produto');
+    if(campo){ campo.focus(); campo.select(); }
+    return;
+  }
+
+  if(e.target.closest('[data-cancelar]')){
+    editando = null; renderLista(); return;
+  }
+
+  var ok = e.target.closest('[data-salvar]');
+  if(ok){ salvarEdicao(ok.dataset.salvar); return; }
+
+  // clique dentro da linha em edição não marca nada
+  if(e.target.closest('.item.editando')) return;
+
   var item = e.target.closest('.item');
   if(!item) return;
   var id = item.dataset.id;
   if(marcadas[id]) delete marcadas[id]; else marcadas[id] = true;
   renderLista();
+});
+
+function salvarEdicao(id){
+  var produto = $('.ed-produto').value.trim();
+  var variacao = $('.ed-var').value.trim();
+  var preco = paraNumero($('.ed-preco').value);
+  var unidade = $('.ed-un').value;
+
+  if(!produto){ toast('Falta o nome do produto', 'erro'); $('.ed-produto').focus(); return; }
+  if(preco === null){ toast('Preço inválido', 'erro'); $('.ed-preco').focus(); return; }
+
+  editando = null;
+  window.__editar(id, { produto: produto, variacao: variacao, preco: preco, unidade: unidade })
+    .then(function(){ toast('Placa corrigida', 'ok'); })
+    .catch(function(e){ console.error(e); toast('Não consegui salvar', 'erro'); renderLista(); });
+}
+
+// Enter salva, Esc cancela
+$('#lista').addEventListener('keydown', function(e){
+  var linha = e.target.closest('.item.editando');
+  if(!linha) return;
+  if(e.key === 'Enter'){ e.preventDefault(); salvarEdicao(linha.dataset.id); }
+  else if(e.key === 'Escape'){ editando = null; renderLista(); }
 });
 
 $('#filtro').addEventListener('click', function(e){
@@ -953,12 +1044,17 @@ function normalizar(p){
 
 function gerarPNG(placa, pronto){
   var saida = $('#palcoSaida');
-  saida.style.setProperty('--lp', '1488px');
-  montar(saida, normalizar(placa), false);
-  requestAnimationFrame(function(){
+  var prontas = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+  // as fontes precisam estar carregadas ANTES de medir, senão o arquivo
+  // sai com tamanho diferente do que aparece na tela
+  prontas.then(function(){
+    saida.style.setProperty('--lp', '1488px');
+    montar(saida, normalizar(placa), false);
     requestAnimationFrame(function(){
-      html2canvas(saida, { width:1488, height:2105, scale:1, backgroundColor:'#ffffff', useCORS:true, logging:false })
-        .then(function(cv){ cv.toBlob(pronto, 'image/png'); });
+      requestAnimationFrame(function(){
+        html2canvas(saida, { width:1488, height:2105, scale:1, backgroundColor:'#ffffff', useCORS:true, logging:false })
+          .then(function(cv){ cv.toBlob(pronto, 'image/png'); });
+      });
     });
   });
 }
